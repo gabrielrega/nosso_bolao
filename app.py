@@ -3,12 +3,36 @@ import pandas as pd
 import os
 import json
 
-# --- CONFIGURAÇÃO E REGRAS ---
+# --- CONFIGURAÇÃO: TABELA DE JOGOS REAIS ---
+# O Admin deve preencher aqui os jogos reais da Copa.
+# Exemplo preenchido com alguns jogos fictícios para teste.
+TABELA_GRUPOS = [
+    # GRUPO A
+    {"id": "A1", "grupo": "A", "time_a": "Catar", "time_b": "Equador"},
+    {"id": "A2", "grupo": "A", "time_a": "Senegal", "time_b": "Holanda"},
+    {"id": "A3", "grupo": "A", "time_a": "Catar", "time_b": "Senegal"},
+    # GRUPO G (Exemplo Brasil)
+    {"id": "G1", "grupo": "G", "time_a": "Brasil", "time_b": "Sérvia"},
+    {"id": "G2", "grupo": "G", "time_a": "Suíça", "time_b": "Camarões"},
+    {"id": "G3", "grupo": "G", "time_a": "Brasil", "time_b": "Suíça"},
+    # ... Adicione todos os 72 jogos aqui ...
+]
+
+# Definição dos confrontos de Mata-Mata (Slots vazios para preencher)
+MATA_MATA_ESTRUTURA = {
+    "16avos": 16, # 16 jogos
+    "Oitavas": 8,
+    "Quartas": 4,
+    "Semi": 2,
+    "Final": 1,
+    "3Lugar": 1
+}
+
 FILE_DB = 'bolao_db.json'
 
 REGRAS = {
     'Grupos': {'cheio': 3, 'gol': 1},
-    '16avos': {'time': 5, 'cheio': 3, 'gol': 1},
+    '16avos': {'time': 5, 'cheio': 3, 'gol': 1}, # Regra da Regressão Linear
     'Oitavas': {'time': 10, 'cheio': 6, 'gol': 2},
     'Quartas': {'time': 15, 'cheio': 9, 'gol': 3},
     'Semi': {'time': 20, 'cheio': 12, 'gol': 4},
@@ -16,17 +40,10 @@ REGRAS = {
     '3Lugar': {'time': 10, 'cheio': 6, 'gol': 2}
 }
 
-# Estrutura básica dos dados se o arquivo não existir
-default_data = {
-    "participantes": {}, # { "Nome": { "jogo_id": {"time_a": "Brasil", "placar_a": 2...} } }
-    "gabarito": {},      # Mesmo formato, mas preenchido pelo Admin
-    "config": {"fase_atual": "Grupos"}
-}
-
-# --- FUNÇÕES DE SUPORTE ---
+# --- FUNÇÕES ---
 def load_data():
     if not os.path.exists(FILE_DB):
-        return default_data
+        return {"participantes": {}, "gabarito": {}, "config": {}}
     with open(FILE_DB, 'r') as f:
         return json.load(f)
 
@@ -35,189 +52,187 @@ def save_data(data):
         json.dump(data, f, indent=4)
 
 def calcular_pontos(palpite, gabarito, fase):
+    if not gabarito: return 0
     pts = 0
-    detalhes = []
     
-    # Se não houver resultado oficial ainda
-    if not gabarito: 
-        return 0
-
-    # 1. PONTOS DE TIME (MATA-MATA)
-    # Verifica se os times do palpite estão presentes no jogo real (independente do lado)
+    # 1. Pontos de Time (Só no Mata-Mata)
     if fase != 'Grupos':
-        times_palpite = {palpite.get('time_a'), palpite.get('time_b')}
-        times_gabarito = {gabarito.get('time_a'), gabarito.get('time_b')}
-        acertos_time = len(times_palpite.intersection(times_gabarito))
-        
-        # Regra: Pontos por time classificado
-        # Se acertou 1 time, ganha X. Se acertou 2, ganha 2X.
-        pts_time = acertos_time * REGRAS[fase]['time']
-        pts += pts_time
-        if pts_time > 0: detalhes.append(f"+{pts_time} (Times)")
+        times_p = {palpite.get('time_a', '').strip().lower(), palpite.get('time_b', '').strip().lower()}
+        times_g = {gabarito.get('time_a', '').strip().lower(), gabarito.get('time_b', '').strip().lower()}
+        # Interseção ignora vazios
+        times_p.discard('')
+        times_g.discard('')
+        acertos = len(times_p.intersection(times_g))
+        pts += acertos * REGRAS[fase]['time']
 
-    # 2. PONTOS DE PLACAR
-    # Regra Crucial: Só vale ponto de placar se acertar o confronto (os dois times)
-    # Na fase de grupos, os times são fixos, então sempre vale tentar o placar.
-    pode_pontuar_placar = True
+    # 2. Pontos de Placar (Só se acertar o confronto exato)
+    match_valido = True
     if fase != 'Grupos':
-        times_palpite = {palpite.get('time_a'), palpite.get('time_b')}
-        times_gabarito = {gabarito.get('time_a'), gabarito.get('time_b')}
-        if times_palpite != times_gabarito:
-            pode_pontuar_placar = False
+        # No mata-mata, placar só vale se acertar OS DOIS times
+        tp = {palpite.get('time_a', '').strip().lower(), palpite.get('time_b', '').strip().lower()}
+        tg = {gabarito.get('time_a', '').strip().lower(), gabarito.get('time_b', '').strip().lower()}
+        if tp != tg or len(tp) < 2:
+            match_valido = False
     
-    if pode_pontuar_placar and gabarito.get('placar_a') is not None:
-        p_a, p_b = int(palpite['placar_a']), int(palpite['placar_b'])
-        g_a, g_b = int(gabarito['placar_a']), int(gabarito['placar_b'])
-        
-        # Acerto Cheio (Vencedor ou Empate)
-        # Lógica: Quem venceu?
-        venc_p = 'A' if p_a > p_b else ('B' if p_b > p_a else 'E')
-        venc_g = 'A' if g_a > g_b else ('B' if g_b > g_a else 'E')
-        
-        if venc_p == venc_g:
-            pts += REGRAS[fase]['cheio']
-            detalhes.append(f"+{REGRAS[fase]['cheio']} (Resultado)")
-        
-        # Acerto de Gols (Exato)
-        # Regra: Inversão não pontua. Tem que acertar o gol do time certo.
-        # Como o mata-mata pode ter times trocados de lado, simplificamos comparando sets
-        if fase == 'Grupos':
-            if p_a == g_a: pts += REGRAS[fase]['gol']
-            if p_b == g_b: pts += REGRAS[fase]['gol']
-        else:
-            # No mata-mata, se acertou os times, compara gols do vencedor e perdedor
-            # Simplificação para o código: compara exato A com A e B com B assumindo ordem do gabarito
-            if p_a == g_a: pts += REGRAS[fase]['gol']
-            if p_b == g_b: pts += REGRAS[fase]['gol']
-
+    if match_valido and gabarito.get('placar_a') is not None:
+        try:
+            pa, pb = int(palpite['placar_a']), int(palpite['placar_b'])
+            ga, gb = int(gabarito['placar_a']), int(gabarito['placar_b'])
+            
+            # Resultado (V/E/D)
+            venc_p = 'A' if pa > pb else ('B' if pb > pa else 'E')
+            venc_g = 'A' if ga > gb else ('B' if gb > ga else 'E')
+            
+            if venc_p == venc_g:
+                pts += REGRAS[fase]['cheio']
+            
+            # Gols (Sem inversão)
+            if pa == ga: pts += REGRAS[fase]['gol']
+            if pb == gb: pts += REGRAS[fase]['gol']
+        except:
+            pass
+            
     return pts
 
-# --- INTERFACE STREAMLIT ---
-st.set_page_config(page_title="Bolão Copa 48", layout="wide")
+# --- INTERFACE ---
+st.set_page_config(page_title="Bolão Copa 48 - Oficial", layout="wide")
 st.title("⚽ Bolão da Copa - 48 Times")
 
 dados = load_data()
-menu = st.sidebar.selectbox("Menu", ["Meus Palpites", "Ranking & Resultados", "Área do Administrador"])
-
-# LISTA DE GRUPOS E FASES
-grupos = list("ABCDEFGHIJKL")
-fases_mata_mata = ["16avos", "Oitavas", "Quartas", "Semi", "Final"]
+menu = st.sidebar.selectbox("Navegação", ["Meus Palpites", "Ranking Geral", "Área Admin"])
 
 if menu == "Meus Palpites":
-    st.header("Faça seus palpites")
-    nome_usuario = st.text_input("Seu Nome (ex: Gabriel, Renato, Eduardo):")
+    st.header("Preencha sua Tabela")
+    user = st.text_input("Seu Nome (Identificação):")
     
-    if nome_usuario:
-        if nome_usuario not in dados['participantes']:
-            dados['participantes'][nome_usuario] = {}
+    if user:
+        if user not in dados['participantes']: dados['participantes'][user] = {}
         
-        st.info("Dica: Salve seus palpites fase por fase.")
+        tab1, tab2 = st.tabs(["1ª Fase: Grupos (Jogos Reais)", "2ª Fase: Mata-Mata (Simulação)"])
         
-        aba_grupos, aba_mata = st.tabs(["Fase de Grupos", "Mata-Mata"])
-        
-        with aba_grupos:
-            st.subheader("Fase de Grupos (Exemplo Simulado)")
-            # Loop simplificado para demonstração. Na real seriam 72 jogos.
-            col1, col2 = st.columns(2)
-            for g in grupos:
-                with col1 if g <= 'F' else col2:
-                    st.markdown(f"**Grupo {g}**")
-                    # Exemplo de 1 jogo por grupo para não poluir o código demo
-                    jid = f"grp_{g}_1"
-                    palpite_atual = dados['participantes'][nome_usuario].get(jid, {})
-                    
-                    c1, c2, c3, c4 = st.columns([2,1,1,2])
-                    c1.text(f"Time {g}1")
-                    pa = c2.number_input(f"Gols A", 0, 10, key=f"{jid}_a", value=palpite_atual.get('placar_a', 0), label_visibility="collapsed")
-                    pb = c3.number_input(f"Gols B", 0, 10, key=f"{jid}_b", value=palpite_atual.get('placar_b', 0), label_visibility="collapsed")
-                    c4.text(f"Time {g}2")
-                    
-                    dados['participantes'][nome_usuario][jid] = {
-                        "time_a": f"Time {g}1", "time_b": f"Time {g}2",
-                        "placar_a": pa, "placar_b": pb
-                    }
-        
-        with aba_mata:
-            st.warning("Lembre-se: No mata-mata, você precisa acertar QUEM joga para pontuar o placar.")
-            fase_sel = st.selectbox("Escolha a fase:", fases_mata_mata)
+        # --- ABA 1: FASE DE GRUPOS ---
+        with tab1:
+            st.subheader("Jogos da Fase de Grupos")
+            st.info("Preencha os placares dos jogos já definidos.")
             
-            # Exemplo genérico de jogos de mata-mata
-            for i in range(1, 3): # Mostrando apenas 2 jogos de exemplo
-                st.markdown(f"--- **Jogo {i} - {fase_sel}** ---")
-                jid = f"{fase_sel}_{i}"
-                palpite_atual = dados['participantes'][nome_usuario].get(jid, {})
-                
-                c1, c2, c3, c4, c5 = st.columns([3, 1, 1, 1, 3])
-                ta = c1.text_input("Time A", value=palpite_atual.get('time_a', ''), key=f"t_{jid}_a", placeholder="Ex: Brasil")
-                pa = c2.number_input("Gols", 0, 20, value=palpite_atual.get('placar_a', 0), key=f"p_{jid}_a")
-                c3.markdown("<h3 style='text-align: center;'>X</h3>", unsafe_allow_html=True)
-                pb = c4.number_input("Gols", 0, 20, value=palpite_atual.get('placar_b', 0), key=f"p_{jid}_b")
-                tb = c5.text_input("Time B", value=palpite_atual.get('time_b', ''), key=f"t_{jid}_b", placeholder="Ex: França")
-                
-                dados['participantes'][nome_usuario][jid] = {
-                    "time_a": ta, "time_b": tb,
-                    "placar_a": pa, "placar_b": pb
-                }
-
-        if st.button("Salvar Meus Palpites"):
-            save_data(dados)
-            st.success("Palpites salvos com sucesso!")
-
-elif menu == "Área do Administrador":
-    st.header("Gabarito Oficial (Apenas Admin)")
-    senha = st.text_input("Senha Admin", type="password")
-    if senha == "1234": # Senha simples para exemplo
-        st.write("Preencha os resultados reais dos jogos aqui.")
-        
-        # Interface simplificada para preencher resultados (mesma lógica de palpites)
-        # Para o Admin, é importante definir o gabarito.
-        # Aqui, replico a lógica simplificada de Grupos
-        st.subheader("Definir Resultados - Grupos")
-        for g in grupos:
-            jid = f"grp_{g}_1"
-            res_atual = dados['gabarito'].get(jid, {})
-            c1, c2, c3, c4 = st.columns([2,1,1,2])
-            c1.text(f"Time {g}1")
-            pa = c2.number_input(f"G A", 0, 10, key=f"adm_{jid}_a", value=res_atual.get('placar_a', 0))
-            pb = c3.number_input(f"G B", 0, 10, key=f"adm_{jid}_b", value=res_atual.get('placar_b', 0))
-            c4.text(f"Time {g}2")
+            # Agrupar jogos por grupo para visualização
+            jogos_por_grupo = {}
+            for j in TABELA_GRUPOS:
+                g = j['grupo']
+                if g not in jogos_por_grupo: jogos_por_grupo[g] = []
+                jogos_por_grupo[g].append(j)
             
-            dados['gabarito'][jid] = {
-                "time_a": f"Time {g}1", "time_b": f"Time {g}2",
-                "placar_a": pa, "placar_b": pb
-            }
+            cols = st.columns(3)
+            idx_col = 0
+            
+            for grupo, lista_jogos in jogos_por_grupo.items():
+                with cols[idx_col % 3]:
+                    st.markdown(f"### Grupo {grupo}")
+                    for jogo in lista_jogos:
+                        jid = jogo['id']
+                        palpite = dados['participantes'][user].get(jid, {})
+                        
+                        c1, c2, c3, c4 = st.columns([3, 1, 0.5, 1])
+                        c1.caption(f"{jogo['time_a']} x {jogo['time_b']}")
+                        pa = c2.text_input(f"A_{jid}", value=palpite.get('placar_a', ''), label_visibility="collapsed", key=f"p_a_{jid}_{user}")
+                        c3.text("x")
+                        pb = c4.text_input(f"B_{jid}", value=palpite.get('placar_b', ''), label_visibility="collapsed", key=f"p_b_{jid}_{user}")
+                        
+                        # Salva automaticamente na estrutura (Time A e B são fixos aqui)
+                        dados['participantes'][user][jid] = {
+                            "time_a": jogo['time_a'], "time_b": jogo['time_b'],
+                            "placar_a": pa, "placar_b": pb
+                        }
+                    st.divider()
+                idx_col += 1
         
-        if st.button("Atualizar Gabarito Oficial"):
-            save_data(dados)
-            st.success("Resultados oficiais atualizados.")
+        # --- ABA 2: MATA-MATA (TUDO DE UMA VEZ) ---
+        with tab2:
+            st.subheader("O Caminho até a Final")
+            st.warning("Aqui você define quem passa! Digite o nome das seleções e o placar previsto.")
+            
+            for fase, qtd in MATA_MATA_ESTRUTURA.items():
+                with st.expander(f"{fase} ({qtd} jogos)", expanded=(fase=="16avos")):
+                    for i in range(1, qtd + 1):
+                        jid = f"{fase}_{i}"
+                        palpite = dados['participantes'][user].get(jid, {})
+                        
+                        st.markdown(f"**Jogo {i}**")
+                        c1, c2, c3, c4, c5 = st.columns([3, 1, 0.5, 1, 3])
+                        
+                        ta = c1.text_input("Time A", value=palpite.get('time_a', ''), key=f"t_a_{jid}_{user}", placeholder="Ex: Brasil")
+                        pa = c2.text_input("Gols", value=palpite.get('placar_a', ''), key=f"p_a_{jid}_{user}")
+                        c3.markdown("x")
+                        pb = c4.text_input("Gols ", value=palpite.get('placar_b', ''), key=f"p_b_{jid}_{user}")
+                        tb = c5.text_input("Time B", value=palpite.get('time_b', ''), key=f"t_b_{jid}_{user}", placeholder="Ex: Argentina")
+                        
+                        dados['participantes'][user][jid] = {
+                            "time_a": ta, "time_b": tb,
+                            "placar_a": pa, "placar_b": pb
+                        }
 
-elif menu == "Ranking & Resultados":
-    st.header("🏆 Classificação Geral")
-    
+        if st.button("💾 SALVAR TUDO"):
+            save_data(dados)
+            st.success("✅ Palpites registrados com sucesso!")
+
+elif menu == "Ranking Geral":
+    st.header("🏆 Classificação")
     if not dados['participantes']:
-        st.warning("Nenhum palpite registrado ainda.")
+        st.write("Ainda não há palpites.")
     else:
-        placar_geral = []
-        
-        for user, palpites in dados['participantes'].items():
-            total_pts = 0
-            # Varre todos os jogos do gabarito
-            for jid, gabarito_jogo in dados['gabarito'].items():
-                palpite_jogo = palpites.get(jid)
-                if palpite_jogo:
-                    # Identifica fase pelo ID (grp, 16avos, Oitavas...)
-                    if 'grp' in jid: fase = 'Grupos'
-                    elif '16avos' in jid: fase = '16avos'
-                    elif 'Oitavas' in jid: fase = 'Oitavas'
-                    else: fase = 'Grupos' # Default fallback
+        resumo = []
+        for p_user, p_dict in dados['participantes'].items():
+            pts_total = 0
+            for jid, gab in dados['gabarito'].items():
+                palp = p_dict.get(jid)
+                if palp:
+                    # Descobre a fase pelo ID
+                    fase = 'Grupos'
+                    for f in REGRAS.keys():
+                        if f in jid: fase = f; break
                     
-                    pts = calcular_pontos(palpite_jogo, gabarito_jogo, fase)
-                    total_pts += pts
-            
-            placar_geral.append({"Participante": user, "Pontos": total_pts})
+                    pts_total += calcular_pontos(palp, gab, fase)
+            resumo.append({"Participante": p_user, "Pontos": pts_total})
         
-        df_ranking = pd.DataFrame(placar_geral).sort_values("Pontos", ascending=False)
-        st.dataframe(df_ranking, use_container_width=True)
+        df = pd.DataFrame(resumo).sort_values("Pontos", ascending=False)
+        st.dataframe(df, use_container_width=True)
+
+elif menu == "Área Admin":
+    pass_input = st.text_input("Senha Admin", type="password")
+    if pass_input == "admin123":
+        st.info("Aqui você preenche os RESULTADOS REAIS conforme eles acontecem.")
         
-        st.subheader("Regras Ativas")
-        st.json(REGRAS)
+        tab_g_adm, tab_m_adm = st.tabs(["Resultados Grupos", "Resultados Mata-Mata"])
+        
+        with tab_g_adm:
+            for j in TABELA_GRUPOS:
+                jid = j['id']
+                gab = dados['gabarito'].get(jid, {})
+                c1, c2, c3, c4 = st.columns([3,1,0.5,1])
+                c1.write(f"{j['time_a']} x {j['time_b']}")
+                ga = c2.text_input("Gols A", value=gab.get('placar_a', ''), key=f"adm_a_{jid}")
+                gb = c4.text_input("Gols B", value=gab.get('placar_b', ''), key=f"adm_b_{jid}")
+                
+                if ga and gb:
+                    dados['gabarito'][jid] = {"placar_a": ga, "placar_b": gb, "time_a": j['time_a'], "time_b": j['time_b']}
+        
+        with tab_m_adm:
+            st.write("Preencha os classificados e placares reais.")
+            for fase, qtd in MATA_MATA_ESTRUTURA.items():
+                with st.expander(fase):
+                    for i in range(1, qtd+1):
+                        jid = f"{fase}_{i}"
+                        gab = dados['gabarito'].get(jid, {})
+                        
+                        c1, c2, c3, c4, c5 = st.columns([3, 1, 0.5, 1, 3])
+                        ta = c1.text_input("Time A Real", value=gab.get('time_a', ''), key=f"adm_ta_{jid}")
+                        pa = c2.text_input("Gols A", value=gab.get('placar_a', ''), key=f"adm_pa_{jid}")
+                        pb = c4.text_input("Gols B", value=gab.get('placar_b', ''), key=f"adm_pb_{jid}")
+                        tb = c5.text_input("Time B Real", value=gab.get('time_b', ''), key=f"adm_tb_{jid}")
+                        
+                        if ta and tb:
+                             dados['gabarito'][jid] = {"time_a": ta, "time_b": tb, "placar_a": pa, "placar_b": pb}
+
+        if st.button("Atualizar Gabarito"):
+            save_data(dados)
+            st.success("Resultados oficiais atualizados!")
