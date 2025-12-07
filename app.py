@@ -6,18 +6,104 @@ import json
 # --- CONFIGURAÇÃO: TABELA DE JOGOS REAIS ---
 # O Admin deve preencher aqui os jogos reais da Copa.
 # Exemplo preenchido com alguns jogos fictícios para teste.
-TABELA_GRUPOS = [
-    # GRUPO A
-    {"id": "A1", "grupo": "A", "time_a": "Catar", "time_b": "Equador"},
-    {"id": "A2", "grupo": "A", "time_a": "Senegal", "time_b": "Holanda"},
-    {"id": "A3", "grupo": "A", "time_a": "Catar", "time_b": "Senegal"},
-    # GRUPO G (Exemplo Brasil)
-    {"id": "G1", "grupo": "G", "time_a": "Brasil", "time_b": "Sérvia"},
-    {"id": "G2", "grupo": "G", "time_a": "Suíça", "time_b": "Camarões"},
-    {"id": "G3", "grupo": "G", "time_a": "Brasil", "time_b": "Suíça"},
-    # ... Adicione todos os 72 jogos aqui ...
-]
 
+TABELA_GRUPOS = [
+    # GRUPO A: México, África do Sul, Coreia do Sul, Repescagem UEFA D
+    {"id": "A1", "grupo": "A", "time_a": "México", "time_b": "África do Sul"},
+    {"id": "A2", "grupo": "A", "time_a": "Coreia do Sul", "time_b": "Repescagem UEFA D"},
+    {"id": "A3", "grupo": "A", "time_a": "Repescagem UEFA D", "time_b": "África do Sul"},
+    {"id": "A4", "grupo": "A", "time_a": "México", "time_b": "Coreia do Sul"},
+    {"id": "A5", "grupo": "A", "time_a": "Repescagem UEFA D", "time_b": "México"},
+    {"id": "A6", "grupo": "A", "time_a": "África do Sul", "time_b": "Coreia do Sul"},
+
+    # GRUPO B: Canadá, Suíça, Catar, Repescagem UEFA A
+    {"id": "B1", "grupo": "B", "time_a": "Canadá", "time_b": "Repescagem UEFA A"},
+    {"id": "B2", "grupo": "B", "time_a": "Catar", "time_b": "Suíça"},
+    {"id": "B3", "grupo": "B", "time_a": "Suíça", "time_b": "Repescagem UEFA A"},
+    {"id": "B4", "grupo": "B", "time_a": "Canadá", "time_b": "Catar"},
+    {"id": "B5", "grupo": "B", "time_a": "Suíça", "time_b": "Canadá"},
+    {"id": "B6", "grupo": "B", "time_a": "Repescagem UEFA A", "time_b": "Catar"},
+
+    # GRUPO C: Brasil, Marrocos, Escócia, Haiti
+    {"id": "C1", "grupo": "C", "time_a": "Brasil", "time_b": "Marrocos"},
+    {"id": "C2", "grupo": "C", "time_a": "Haiti", "time_b": "Escócia"},
+    {"id": "C3", "grupo": "C", "time_a": "Escócia", "time_b": "Marrocos"},
+    {"id": "C4", "grupo": "C", "time_a": "Brasil", "time_b": "Haiti"},
+    {"id": "C5", "grupo": "C", "time_a": "Escócia", "time_b": "Brasil"},
+    {"id": "C6", "grupo": "C", "time_a": "Marrocos", "time_b": "Haiti"},
+
+    # GRUPO D: EUA, Paraguai, Austrália, Repescagem UEFA C
+    {"id": "D1", "grupo": "D", "time_a": "EUA", "time_b": "Paraguai"},
+    {"id": "D2", "grupo": "D", "time_a": "Austrália", "time_b": "Repescagem UEFA C"},
+    {"id": "D3", "grupo": "D", "time_a": "EUA", "time_b": "Austrália"},
+    {"id": "D4", "grupo": "D", "time_a": "Repescagem UEFA C", "time_b": "Paraguai"},
+    {"id": "D5", "grupo": "D", "time_a": "Repescagem UEFA C", "time_b": "EUA"},
+    {"id": "D6", "grupo": "D", "time_a": "Paraguai", "time_b": "Austrália"},
+
+    # GRUPO E: Alemanha, Curaçao, C. do Marfim, Equador
+    {"id": "E1", "grupo": "E", "time_a": "Alemanha", "time_b": "Curaçao"},
+    {"id": "E2", "grupo": "E", "time_a": "Costa do Marfim", "time_b": "Equador"},
+    {"id": "E3", "grupo": "E", "time_a": "Alemanha", "time_b": "Costa do Marfim"},
+    {"id": "E4", "grupo": "E", "time_a": "Equador", "time_b": "Curaçao"},
+    {"id": "E5", "grupo": "E", "time_a": "Equador", "time_b": "Alemanha"},
+    {"id": "E6", "grupo": "E", "time_a": "Curaçao", "time_b": "Costa do Marfim"},
+
+    # GRUPO F: Holanda, Japão, Repescagem UEFA B, Tunísia
+    {"id": "F1", "grupo": "F", "time_a": "Holanda", "time_b": "Japão"},
+    {"id": "F2", "grupo": "F", "time_a": "Repescagem UEFA B", "time_b": "Tunísia"},
+    {"id": "F3", "grupo": "F", "time_a": "Holanda", "time_b": "Repescagem UEFA B"},
+    {"id": "F4", "grupo": "F", "time_a": "Tunísia", "time_b": "Japão"},
+    {"id": "F5", "grupo": "F", "time_a": "Tunísia", "time_b": "Holanda"},
+    {"id": "F6", "grupo": "F", "time_a": "Japão", "time_b": "Repescagem UEFA B"},
+
+    # GRUPO G: Bélgica, Egito, Irã, Nova Zelândia
+    {"id": "G1", "grupo": "G", "time_a": "Bélgica", "time_b": "Egito"},
+    {"id": "G2", "grupo": "G", "time_a": "Irã", "time_b": "Nova Zelândia"},
+    {"id": "G3", "grupo": "G", "time_a": "Bélgica", "time_b": "Irã"},
+    {"id": "G4", "grupo": "G", "time_a": "Nova Zelândia", "time_b": "Egito"},
+    {"id": "G5", "grupo": "G", "time_a": "Nova Zelândia", "time_b": "Bélgica"},
+    {"id": "G6", "grupo": "G", "time_a": "Egito", "time_b": "Irã"},
+
+    # GRUPO H: Espanha, Cabo Verde, Arábia Saudita, Uruguai
+    {"id": "H1", "grupo": "H", "time_a": "Espanha", "time_b": "Cabo Verde"},
+    {"id": "H2", "grupo": "H", "time_a": "Arábia Saudita", "time_b": "Uruguai"},
+    {"id": "H3", "grupo": "H", "time_a": "Espanha", "time_b": "Arábia Saudita"},
+    {"id": "H4", "grupo": "H", "time_a": "Uruguai", "time_b": "Cabo Verde"},
+    {"id": "H5", "grupo": "H", "time_a": "Uruguai", "time_b": "Espanha"},
+    {"id": "H6", "grupo": "H", "time_a": "Cabo Verde", "time_b": "Arábia Saudita"},
+
+    # GRUPO I: França, Senegal, Repescagem FIFA 2, Noruega
+    {"id": "I1", "grupo": "I", "time_a": "França", "time_b": "Senegal"},
+    {"id": "I2", "grupo": "I", "time_a": "Repescagem FIFA 2", "time_b": "Noruega"},
+    {"id": "I3", "grupo": "I", "time_a": "França", "time_b": "Repescagem FIFA 2"},
+    {"id": "I4", "grupo": "I", "time_a": "Noruega", "time_b": "Senegal"},
+    {"id": "I5", "grupo": "I", "time_a": "Noruega", "time_b": "França"},
+    {"id": "I6", "grupo": "I", "time_a": "Senegal", "time_b": "Repescagem FIFA 2"},
+
+    # GRUPO J: Argentina, Argélia, Áustria, Jordânia
+    {"id": "J1", "grupo": "J", "time_a": "Argentina", "time_b": "Argélia"},
+    {"id": "J2", "grupo": "J", "time_a": "Áustria", "time_b": "Jordânia"},
+    {"id": "J3", "grupo": "J", "time_a": "Argentina", "time_b": "Áustria"},
+    {"id": "J4", "grupo": "J", "time_a": "Jordânia", "time_b": "Argélia"},
+    {"id": "J5", "grupo": "J", "time_a": "Jordânia", "time_b": "Argentina"},
+    {"id": "J6", "grupo": "J", "time_a": "Argélia", "time_b": "Áustria"},
+
+    # GRUPO K: Portugal, Repescagem FIFA 1, Uzbequistão, Colômbia
+    {"id": "K1", "grupo": "K", "time_a": "Portugal", "time_b": "Repescagem FIFA 1"},
+    {"id": "K2", "grupo": "K", "time_a": "Uzbequistão", "time_b": "Colômbia"},
+    {"id": "K3", "grupo": "K", "time_a": "Portugal", "time_b": "Uzbequistão"},
+    {"id": "K4", "grupo": "K", "time_a": "Colômbia", "time_b": "Repescagem FIFA 1"},
+    {"id": "K5", "grupo": "K", "time_a": "Colômbia", "time_b": "Portugal"},
+    {"id": "K6", "grupo": "K", "time_a": "Repescagem FIFA 1", "time_b": "Uzbequistão"},
+
+    # GRUPO L: Inglaterra, Croácia, Gana, Panamá
+    {"id": "L1", "grupo": "L", "time_a": "Inglaterra", "time_b": "Croácia"},
+    {"id": "L2", "grupo": "L", "time_a": "Gana", "time_b": "Panamá"},
+    {"id": "L3", "grupo": "L", "time_a": "Inglaterra", "time_b": "Gana"},
+    {"id": "L4", "grupo": "L", "time_a": "Panamá", "time_b": "Croácia"},
+    {"id": "L5", "grupo": "L", "time_a": "Panamá", "time_b": "Inglaterra"},
+    {"id": "L6", "grupo": "L", "time_a": "Croácia", "time_b": "Gana"},
+]
 # Definição dos confrontos de Mata-Mata (Slots vazios para preencher)
 MATA_MATA_ESTRUTURA = {
     "16avos": 16, # 16 jogos
