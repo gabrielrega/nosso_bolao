@@ -150,6 +150,10 @@ def calcular_pontos(palpite, gabarito, fase):
     
     if match_valido and gabarito.get('placar_a') is not None and gabarito.get('placar_a') != "":
         try:
+            # Garante que os palpites não são None antes de converter para int
+            if palpite.get('placar_a') is None or palpite.get('placar_b') is None:
+                return pts
+
             pa, pb = int(palpite['placar_a']), int(palpite['placar_b'])
             ga, gb = int(gabarito['placar_a']), int(gabarito['placar_b'])
             
@@ -163,8 +167,8 @@ def calcular_pontos(palpite, gabarito, fase):
             # Gols Exatos
             if pa == ga: pts += REGRAS[fase]['gol']
             if pb == gb: pts += REGRAS[fase]['gol']
-        except:
-            pass
+        except (ValueError, TypeError) as e:
+            st.error(f"Erro ao calcular pontos para o jogo: {palpite}. Verifique os placares.")
             
     return pts
 
@@ -221,13 +225,13 @@ if menu == "Meus Palpites":
                         c1.markdown(f"<div style='text-align: right; padding-top: 10px; font-weight: bold;'>{jogo['time_a']}</div>", unsafe_allow_html=True)
                         
                         # Input A
-                        pa = c2.text_input(f"A_{jid}", value=palpite.get('placar_a', ''), label_visibility="collapsed", key=f"pa_{jid}_{user}")
+                        pa = c2.number_input(f"A_{jid}", value=palpite.get('placar_a', None), min_value=0, step=1, label_visibility="collapsed", key=f"pa_{jid}_{user}")
                         
                         # X no meio
                         c3.markdown("<div style='text-align: center; padding-top: 10px;'>x</div>", unsafe_allow_html=True)
                         
                         # Input B
-                        pb = c4.text_input(f"B_{jid}", value=palpite.get('placar_b', ''), label_visibility="collapsed", key=f"pb_{jid}_{user}")
+                        pb = c4.number_input(f"B_{jid}", value=palpite.get('placar_b', None), min_value=0, step=1, label_visibility="collapsed", key=f"pb_{jid}_{user}")
                         
                         # Time B (Alinhado à esquerda)
                         c5.markdown(f"<div style='text-align: left; padding-top: 10px; font-weight: bold;'>{jogo['time_b']}</div>", unsafe_allow_html=True)
@@ -258,9 +262,9 @@ if menu == "Meus Palpites":
                         c1, c2, c3, c4, c5 = st.columns([3, 1, 0.5, 1, 3])
                         
                         ta = c1.text_input("Time A", value=palpite.get('time_a', ''), key=f"ta_{jid}_{user}", placeholder="Time A...")
-                        pa = c2.text_input("Gols A", value=palpite.get('placar_a', ''), key=f"pa_{jid}_{user}", label_visibility="collapsed")
+                        pa = c2.number_input("Gols A", value=palpite.get('placar_a', None), min_value=0, step=1, key=f"pa_{jid}_{user}", label_visibility="collapsed")
                         c3.markdown("<div style='text-align: center; padding-top: 10px;'>x</div>", unsafe_allow_html=True)
-                        pb = c4.text_input("Gols B", value=palpite.get('placar_b', ''), key=f"pb_{jid}_{user}", label_visibility="collapsed")
+                        pb = c4.number_input("Gols B", value=palpite.get('placar_b', None), min_value=0, step=1, key=f"pb_{jid}_{user}", label_visibility="collapsed")
                         tb = c5.text_input("Time B", value=palpite.get('time_b', ''), key=f"tb_{jid}_{user}", placeholder="Time B...")
                         
                         dados['participantes'][user][jid] = {
@@ -310,7 +314,7 @@ elif menu == "Ranking Geral":
 elif menu == "Área Admin":
     st.header("🔒 Área Restrita")
     senha = st.text_input("Senha Admin", type="password")
-    if senha == "admin123":
+    if senha == os.environ.get('ADMIN_PASSWORD', 'admin123'):
         st.success("Logado.")
         st.write("Preencha aqui os resultados reais da Copa conforme eles acontecem.")
         
@@ -323,12 +327,12 @@ elif menu == "Área Admin":
                 c1, c2, c3, c4, c5 = st.columns([3, 1, 0.5, 1, 3])
                 
                 c1.markdown(f"<div style='text-align: right; padding-top: 10px;'>{j['time_a']}</div>", unsafe_allow_html=True)
-                ga = c2.text_input("", value=gab.get('placar_a', ''), key=f"adm_ga_{jid}", label_visibility="collapsed")
+                ga = c2.number_input("", value=gab.get('placar_a', None), min_value=0, step=1, key=f"adm_ga_{jid}", label_visibility="collapsed")
                 c3.markdown("<div style='text-align: center; padding-top: 10px;'>x</div>", unsafe_allow_html=True)
-                gb = c4.text_input("", value=gab.get('placar_b', ''), key=f"adm_gb_{jid}", label_visibility="collapsed")
+                gb = c4.number_input("", value=gab.get('placar_b', None), min_value=0, step=1, key=f"adm_gb_{jid}", label_visibility="collapsed")
                 c5.markdown(f"<div style='text-align: left; padding-top: 10px;'>{j['time_b']}</div>", unsafe_allow_html=True)
                 
-                if ga and gb:
+                if ga is not None and gb is not None:
                     dados['gabarito'][jid] = {"placar_a": ga, "placar_b": gb, "time_a": j['time_a'], "time_b": j['time_b']}
         
         with tab_m:
@@ -340,12 +344,12 @@ elif menu == "Área Admin":
                         
                         c1, c2, c3, c4, c5 = st.columns([3, 1, 0.5, 1, 3])
                         ta = c1.text_input("Time A Real", value=gab.get('time_a', ''), key=f"adm_ta_{jid}")
-                        pa = c2.text_input("GA", value=gab.get('placar_a', ''), key=f"adm_pa_{jid}")
+                        pa = c2.number_input("GA", value=gab.get('placar_a', None), min_value=0, step=1, key=f"adm_pa_{jid}")
                         c3.markdown("x")
-                        pb = c4.text_input("GB", value=gab.get('placar_b', ''), key=f"adm_pb_{jid}")
+                        pb = c4.number_input("GB", value=gab.get('placar_b', None), min_value=0, step=1, key=f"adm_pb_{jid}")
                         tb = c5.text_input("Time B Real", value=gab.get('time_b', ''), key=f"adm_tb_{jid}")
                         
-                        if ta and tb:
+                        if ta and tb and pa is not None and pb is not None:
                              dados['gabarito'][jid] = {"time_a": ta, "time_b": tb, "placar_a": pa, "placar_b": pb}
 
         if st.button("Atualizar Gabarito Oficial"):
